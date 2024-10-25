@@ -1,70 +1,221 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import { Text, Button, StyleSheet, Pressable, ActivityIndicator, Alert } from "react-native";
+import { TextInput } from "react-native";
+import { useRef, useState } from "react";
+import { View } from "react-native";
+import { OTPInput } from "react-native-otp-component";
+import Ionicons from '@expo/vector-icons/Ionicons';
+import axios from "axios";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+export default function SignIn() {
+  const [codes, setCodes] = useState<string[] | undefined>(Array(6).fill(""));
+  const [isLoading, setIsLoading] = useState(false);
+  const [isVerifiedSuccess, setIsVerifiedSuccess] = useState(false)
+  const [verifiedStudentData, setVerifiedStudentData] = useState(null);
+  const refs = Array(6)
+    .fill(null)
+    .map(() => useRef<TextInput>(null));
 
-export default function HomeScreen() {
+  const [errorMessages, setErrorMessages] = useState<string[]>();
+
+  const onChangeCode = (text: string, index: number) => {
+    if (text.length > 1) {
+      setErrorMessages(undefined);
+      const newCodes = text.split("");
+      setCodes(newCodes);
+      refs[5]!.current?.focus();
+      return;
+    }
+    setErrorMessages(undefined);
+    const newCodes = [...codes!];
+    newCodes[index] = text;
+    setCodes(newCodes);
+    if (text !== "" && index < 5) {
+      refs[index + 1]!.current?.focus();
+    }
+  };
+
+  const verifyHandler = async (event) => {
+    console.log("codes", codes?.join(''))
+    setIsLoading(true);
+    const otoPayload = {
+      otp: codes?.join('')
+    }
+
+    try {
+      const response = await axios.post(`http://192.168.0.122:3000/api/otp/verifyotp`, otoPayload);
+      if (response.status === 200) {
+        setVerifiedStudentData(response.data.data)
+        setIsVerifiedSuccess(true)
+        setIsLoading(false);
+        setCodes(Array(6).fill(""));
+      } else {
+        Alert.alert("SORRY!", "Failed to verify OTP");
+        setIsVerifiedSuccess(false)
+        setCodes(Array(6).fill(""));
+      }
+    } catch (error: any) {
+      const resMessage =
+        (error.response &&
+          error.response.data &&
+          error.response.data.message) ||
+        error.message ||
+        error.toString();
+      Alert.alert("SORRY!", resMessage);
+      setCodes(Array(6).fill(""));
+      setIsLoading(false);
+    }
+  };
+
+  const otpConfig = {
+    borderColor: "#000",
+    backgroundColor: "#fff",
+    textColor: "#000",
+    errorColor: "#dc2626",
+    focusColor: "#22c55e"
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    isVerifiedSuccess ? <View
+      style={
+        {
+          height: "100%",
+          width: "100%",
+          justifyContent: "center",
+          alignItems: "center",
+          display: "flex",
+          padding: 20,
+          backgroundColor: "#fff"
+        }
+      }
+    >
+      {isVerifiedSuccess ?
+        <Ionicons size={100} name="checkmark-circle" style={styles.checkmark} /> :
+        <Ionicons size={100} name="close-circle" style={styles.close} />
+      }
+      {isVerifiedSuccess ? <Text style={styles.alertMsg}>Successful</Text> : <Text style={styles.alertMsg}>Failed</Text>}
+      <View style={{
+        height: 1,
+        backgroundColor: '#000',
+        alignSelf: 'stretch'
+      }} />
+
+      <Text style={styles.infoLabel}>Student name:</Text>
+      <Text style={styles.infoValue}>{verifiedStudentData?.studentName || 'NA'}</Text>
+      <Text style={styles.infoLabel}>Parent name:</Text>
+      <Text style={styles.infoValue}>{verifiedStudentData?.parentName || 'NA'}</Text>
+      <Text style={styles.infoLabel}>Parent mobile:</Text>
+      <Text style={styles.infoValue}>{verifiedStudentData?.phone || 'NA'}</Text>
+      <View style={{
+        height: 1,
+        backgroundColor: '#000',
+        alignSelf: 'stretch'
+      }} />
+      <Pressable style={styles.backButton} onPress={() => {
+        setIsVerifiedSuccess(false)
+        setVerifiedStudentData(null)
+      }}>
+        <Ionicons size={20} name="arrow-back-sharp" style={styles.backArrow} />
+        <Text style={styles.text}> Back </Text>
+      </Pressable>
+    </View> :
+      <View
+        style={
+          {
+            height: "100%",
+            width: "100%",
+            justifyContent: "center",
+            alignItems: "center",
+            display: "flex",
+            padding: 20,
+            gap: 50,
+            backgroundColor: "#fff"
+          }
+        }>
+        <Ionicons size={150} name="shield-checkmark-sharp" style={styles.checkmark} />
+        <Text style={styles.title}>Enter verification code</Text>
+        <OTPInput
+          codes={codes!}
+          errorMessages={errorMessages}
+          onChangeCode={onChangeCode}
+          refs={refs}
+          config={otpConfig}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({ ios: 'cmd + d', android: 'cmd + m' })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+
+        {isLoading ?
+          <><ActivityIndicator size="large" color="#00ff00" />
+            <Text>Verifying please wait...</Text></>
+          : <Pressable style={styles.button} onPress={verifyHandler}>
+            <Text style={styles.text}>Verify phone number</Text>
+          </Pressable>}
+      </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  headerImage: {
+    color: 'green'
+  },
+  headerTitle: {
+    fontSize: 50,
+  },
+
+  title: {
+    fontSize: 30,
+    fontWeight: "800"
+  },
+  subTitle: {
+    fontSize: 20
+  },
+  button: {
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 30,
+    elevation: 3,
+    backgroundColor: '#ff1b1b'
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  text: {
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: '800',
+    letterSpacing: 0.25,
+    color: 'white',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  checkmark: {
+    color: 'green'
   },
+  close: {
+    color: 'red'
+  },
+  infoLabel: {
+    fontWeight: "600",
+    paddingTop: 10
+  },
+  infoValue: {
+    fontWeight: "800",
+    fontSize: 20,
+  },
+  alertMsg: {
+    fontSize: 30,
+    fontWeight: "800"
+  },
+  backButton: {
+    display: "flex",
+    flexDirection: "row",
+    gap: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 5,
+    paddingBottom: 5,
+    paddingLeft: 20,
+    paddingRight: 20,
+    marginTop: 20,
+    marginBottom: 20,
+    backgroundColor: "#000",
+    borderRadius: 30
+  },
+  backArrow: {
+    color: "#fff"
+  }
 });

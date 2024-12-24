@@ -34,35 +34,38 @@ export default function SignIn() {
     }
   };
 
+  const hasEmptyValue = codes.some(value => value === "");
   const verifyHandler = async (event) => {
-    console.log("codes", codes?.join(''))
-    setIsLoading(true);
-    const otoPayload = {
-      otp: codes?.join('')
-    }
-
-    try {
-      const response = await axios.post(`http://192.168.0.122:3000/api/otp/verifyotp`, otoPayload);
-      if (response.status === 200) {
-        setVerifiedStudentData(response.data.data)
-        setIsVerifiedSuccess(true)
-        setIsLoading(false);
-        setCodes(Array(6).fill(""));
-      } else {
-        Alert.alert("SORRY!", "Failed to verify OTP");
-        setIsVerifiedSuccess(false)
-        setCodes(Array(6).fill(""));
+    if (!hasEmptyValue) {
+      console.log("codes", codes?.join(''))
+      setIsLoading(true);
+      const otoPayload = {
+        otp: codes?.join('')
       }
-    } catch (error: any) {
-      const resMessage =
-        (error.response &&
-          error.response.data &&
-          error.response.data.message) ||
-        error.message ||
-        error.toString();
-      Alert.alert("SORRY!", resMessage);
-      setCodes(Array(6).fill(""));
-      setIsLoading(false);
+
+      try {
+        const response = await axios.post(`http://192.168.0.122:3000/api/otp/verifyotp`, otoPayload);
+        if (response.status === 200) {
+          setVerifiedStudentData(response.data.data)
+          setIsVerifiedSuccess(true)
+          setIsLoading(false);
+          setCodes(Array(6).fill(""));
+        } else {
+          Alert.alert("SORRY!", "Failed to verify OTP");
+          setIsVerifiedSuccess(false)
+          setCodes(Array(6).fill(""));
+        }
+      } catch (error: any) {
+        const resMessage =
+          (error.response &&
+            error.response.data &&
+            error.response.data.message) ||
+          error.message ||
+          error.toString();
+        Alert.alert("SORRY!", resMessage);
+        setCodes(Array(6).fill(""));
+        setIsLoading(false);
+      }
     }
   };
 
@@ -132,7 +135,7 @@ export default function SignIn() {
           }
         }>
         <Ionicons size={150} name="shield-checkmark-sharp" style={styles.checkmark} />
-        <Text style={styles.title}>Enter verification code</Text>
+        <Text style={styles.title}>Enter OTP</Text>
         <OTPInput
           codes={codes!}
           errorMessages={errorMessages}
@@ -144,8 +147,8 @@ export default function SignIn() {
         {isLoading ?
           <><ActivityIndicator size="large" color="#00ff00" />
             <Text>Verifying please wait...</Text></>
-          : <Pressable style={styles.button} onPress={verifyHandler}>
-            <Text style={styles.text}>Verify phone number</Text>
+          : <Pressable style={hasEmptyValue ? styles.disableButton : styles.button} disabled={hasEmptyValue} onPress={verifyHandler}>
+            <Text style={styles.text} >Verify OTP</Text>
           </Pressable>}
       </View>
   );
@@ -175,6 +178,17 @@ const styles = StyleSheet.create({
     elevation: 3,
     backgroundColor: '#ff1b1b'
   },
+  disableButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 30,
+    elevation: 3,
+    backgroundColor: 'lightgrey',
+    opacity: 0.5
+  },
+
   text: {
     fontSize: 16,
     lineHeight: 21,
